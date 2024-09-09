@@ -13,12 +13,12 @@ const { isUrl, getGroupAdmins, generateMessageTag, getBuffer, getSizeMedia, fetc
 const { jidNormalizedUser, proto, getBinaryNodeChildren, getBinaryNodeChild, generateWAMessageContent, generateForwardMessageContent, prepareWAMessageMedia, delay, areJidsSameUser, extractMessageContent, generateMessageID, downloadContentFromMessage, generateWAMessageFromContent, jidDecode, generateWAMessage, toBuffer, getContentType, getDevice } = require('@whiskeysockets/baileys');
 
 /*
-	* Create By Naze
-	* Follow https://github.com/nazedev
+	* Create By ndaa
+	* Follow https://github.com/ndaadev
 	* Whatsapp : wa.me/6282113821188
 */
 
-async function GroupUpdate(naze, update, store) {
+async function GroupUpdate(ndaa, update, store) {
 	try {
 		for (let n of update) {
 			if (store.groupMetadata[n.id]) {
@@ -33,19 +33,19 @@ async function GroupUpdate(naze, update, store) {
 	}
 }
 
-async function GroupParticipantsUpdate(naze, { id, participants, action }, store) {
+async function GroupParticipantsUpdate(ndaa, { id, participants, action }, store) {
 	try {
 		if (global.db.groups && global.db.groups[id] && global.db.groups[id].welcome && store.groupMetadata && store.groupMetadata[id]) {
 			const metadata = store.groupMetadata[id]
 			for (let n of participants) {
 				let profile;
 				try {
-					profile = await naze.profilePictureUrl(n, 'image');
+					profile = await ndaa.profilePictureUrl(n, 'image');
 				} catch {
 					profile = 'https://telegra.ph/file/95670d63378f7f4210f03.png';
 				}
 				if (action == 'add') {
-					await naze.sendMessage(id, {
+					await ndaa.sendMessage(id, {
 						text: `Welcome to ${metadata.subject}\n@${n.split('@')[0]}`,
 						contextInfo: {
 							mentionedJid: [n],
@@ -61,7 +61,7 @@ async function GroupParticipantsUpdate(naze, { id, participants, action }, store
 					});
 					metadata.participants.push(...participants.map(id => ({ id: jidNormalizedUser(id), admin: null })))
 				} else if (action == 'remove') {
-					await naze.sendMessage(id, {
+					await ndaa.sendMessage(id, {
 						text: `@${n.split('@')[0]}\nLeaving From ${metadata.subject}`,
 						contextInfo: {
 							mentionedJid: [n],
@@ -77,7 +77,7 @@ async function GroupParticipantsUpdate(naze, { id, participants, action }, store
 					});
 					metadata.participants = metadata.participants.filter(p => !participants.includes(jidNormalizedUser(p.id)))
 				} else if (action == 'promote') {
-					await naze.sendMessage(id, {
+					await ndaa.sendMessage(id, {
 						text: `@${n.split('@')[0]}\nPromote From ${metadata.subject}`,
 						contextInfo: {
 							mentionedJid: [n],
@@ -98,7 +98,7 @@ async function GroupParticipantsUpdate(naze, { id, participants, action }, store
 						}
 					}
 				} else if (action == 'demote') {
-					await naze.sendMessage(id, {
+					await ndaa.sendMessage(id, {
 						text: `@${n.split('@')[0]}\nDemote From ${metadata.subject}`,
 						contextInfo: {
 							mentionedJid: [n],
@@ -126,9 +126,9 @@ async function GroupParticipantsUpdate(naze, { id, participants, action }, store
 	}
 }
 
-async function LoadDataBase(naze, m) {
+async function LoadDataBase(ndaa, m) {
 	try {
-		const botNumber = await naze.decodeJid(naze.user.id);
+		const botNumber = await ndaa.decodeJid(ndaa.user.id);
 		const isNumber = x => typeof x === 'number' && !isNaN(x)
 		const isBoolean = x => typeof x === 'boolean' && Boolean(x)
 		let user = global.db.users[m.sender]
@@ -167,6 +167,7 @@ async function LoadDataBase(naze, m) {
 		if (typeof user !== 'object') global.db.users[m.sender] = {}
 		if (user) {
 			if (!('vip' in user)) user.afkReason = false
+			if (!('registered' in user)) user.registered = false
 			if (!isNumber(user.afkTime)) user.afkTime = -1
 			if (!('afkReason' in user)) user.afkReason = ''
 			if (!isNumber(user.limit)) user.limit = limitUser
@@ -177,6 +178,7 @@ async function LoadDataBase(naze, m) {
 		} else {
 			global.db.users[m.sender] = {
 				vip: false,
+				registered: false,
 				afkTime: -1,
 				afkReason: '',
 				limit: limitUser,
@@ -219,38 +221,38 @@ async function LoadDataBase(naze, m) {
 	}
 }
 
-async function MessagesUpsert(naze, message, store) {
+async function MessagesUpsert(ndaa, message, store) {
 	try {
-		let botNumber = await naze.decodeJid(naze.user.id);
+		let botNumber = await ndaa.decodeJid(ndaa.user.id);
 		const msg = message.messages[0];
-		if (store.groupMetadata && Object.keys(store.groupMetadata).length === 0) store.groupMetadata = await naze.groupFetchAllParticipating()
+		if (store.groupMetadata && Object.keys(store.groupMetadata).length === 0) store.groupMetadata = await ndaa.groupFetchAllParticipating()
 		const type = msg.message ? (getContentType(msg.message) || Object.keys(msg.message)[0]) : '';
-		if (!naze.public && !msg.key.fromMe && message.type === 'notify') return
+		if (!ndaa.public && !msg.key.fromMe && message.type === 'notify') return
 		if (!msg.message) return
-		const m = await Serialize(naze, msg, store)
-		require('../naze')(naze, m, message, store);
+		const m = await Serialize(ndaa, msg, store)
+		require('../ndaa')(ndaa, m, message, store);
 		if (type === 'interactiveResponseMessage' && m.quoted && m.quoted.fromMe) {
 			let apb = await generateWAMessage(m.chat, { text: JSON.parse(m.msg.nativeFlowResponseMessage.paramsJson).id, mentions: m.mentionedJid }, {
-				userJid: naze.user.id,
+				userJid: ndaa.user.id,
 				quoted: m.quoted
 			});
 			apb.key = msg.key
-			apb.key.fromMe = areJidsSameUser(m.sender, naze.user.id);
+			apb.key.fromMe = areJidsSameUser(m.sender, ndaa.user.id);
 			if (m.isGroup) apb.participant = m.sender;
 			let pbr = {
 				...msg,
 				messages: [proto.WebMessageInfo.fromObject(apb)],
 				type: 'append'
 			}
-			naze.ev.emit('messages.upsert', pbr);
+			ndaa.ev.emit('messages.upsert', pbr);
 		}
 		if (global.db.set && global.db.set[botNumber] && global.db.set[botNumber].readsw) {
 			if (msg.key.remoteJid === 'status@broadcast') {
-				await naze.readMessages([msg.key]);
-				if (/protocolMessage/i.test(type)) naze.sendFromOwner(global.owner, 'Status dari @' + msg.key.participant.split('@')[0] + ' Telah dihapus', msg, { mentions: [msg.key.participant] });
+				await ndaa.readMessages([msg.key]);
+				if (/protocolMessage/i.test(type)) ndaa.sendFromOwner(global.owner, 'Status dari @' + msg.key.participant.split('@')[0] + ' Telah dihapus', msg, { mentions: [msg.key.participant] });
 				if (/(audioMessage|imageMessage|videoMessage|extendedTextMessage)/i.test(type)) {
 					let keke = (type == 'extendedTextMessage') ? `Story Teks Berisi : ${msg.message.extendedTextMessage.text ? msg.message.extendedTextMessage.text : ''}` : (type == 'imageMessage') ? `Story Gambar ${msg.message.imageMessage.caption ? 'dengan Caption : ' + msg.message.imageMessage.caption : ''}` : (type == 'videoMessage') ? `Story Video ${msg.message.videoMessage.caption ? 'dengan Caption : ' + msg.message.videoMessage.caption : ''}` : (type == 'audioMessage') ? 'Story Audio' : '\nTidak diketahui cek saja langsung'
-					await naze.sendFromOwner(global.owner, `Melihat story dari @${msg.key.participant.split('@')[0]}\n${keke}`, msg, { mentions: [msg.key.participant] });
+					await ndaa.sendFromOwner(global.owner, `Melihat story dari @${msg.key.participant.split('@')[0]}\n${keke}`, msg, { mentions: [msg.key.participant] });
 				}
 			}
 		}
@@ -259,12 +261,12 @@ async function MessagesUpsert(naze, message, store) {
 	}
 }
 
-async function Solving(naze, store) {
-	naze.public = true
+async function Solving(ndaa, store) {
+	ndaa.public = true
 	
-	naze.serializeM = (m) => MessagesUpsert(naze, m, store)
+	ndaa.serializeM = (m) => MessagesUpsert(ndaa, m, store)
 	
-	naze.decodeJid = (jid) => {
+	ndaa.decodeJid = (jid) => {
 		if (!jid) return jid
 		if (/:\d+@/gi.test(jid)) {
 			let decode = jidDecode(jid) || {}
@@ -272,10 +274,10 @@ async function Solving(naze, store) {
 		} else return jid
 	}
 	
-	naze.getName = (jid, withoutContact  = false) => {
-		const id = naze.decodeJid(jid);
+	ndaa.getName = (jid, withoutContact  = false) => {
+		const id = ndaa.decodeJid(jid);
 		if (id.endsWith('@g.us')) {
-			const groupInfo = store.contacts[id] || naze.groupMetadata(id) || {};
+			const groupInfo = store.contacts[id] || ndaa.groupMetadata(id) || {};
 			return Promise.resolve(groupInfo.name || groupInfo.subject || PhoneNumber('+' + id.replace('@g.us', '')).getNumber('international'));
 		} else {
 			if (id === '0@s.whatsapp.net') {
@@ -286,19 +288,19 @@ async function Solving(naze, store) {
 		}
 	}
 	
-	naze.sendContact = async (jid, kon, quoted = '', opts = {}) => {
+	ndaa.sendContact = async (jid, kon, quoted = '', opts = {}) => {
 		let list = []
 		for (let i of kon) {
 			list.push({
-				displayName: await naze.getName(i + '@s.whatsapp.net'),
-				vcard: `BEGIN:VCARD\nVERSION:3.0\nN:${await naze.getName(i + '@s.whatsapp.net')}\nFN:${await naze.getName(i + '@s.whatsapp.net')}\nitem1.TEL;waid=${i}:${i}\nitem1.X-ABLabel:Ponsel\nitem2.ADR:;;Indonesia;;;;\nitem2.X-ABLabel:Region\nEND:VCARD` //vcard: `BEGIN:VCARD\nVERSION:3.0\nN:${await naze.getName(i + '@s.whatsapp.net')}\nFN:${await naze.getName(i + '@s.whatsapp.net')}\nitem1.TEL;waid=${i}:${i}\nitem1.X-ABLabel:Ponsel\nitem2.EMAIL;type=INTERNET:whatsapp@gmail.com\nitem2.X-ABLabel:Email\nitem3.URL:https://instagram.com/naze_dev\nitem3.X-ABLabel:Instagram\nitem4.ADR:;;Indonesia;;;;\nitem4.X-ABLabel:Region\nEND:VCARD`
+				displayName: await ndaa.getName(i + '@s.whatsapp.net'),
+				vcard: `BEGIN:VCARD\nVERSION:3.0\nN:${await ndaa.getName(i + '@s.whatsapp.net')}\nFN:${await ndaa.getName(i + '@s.whatsapp.net')}\nitem1.TEL;waid=${i}:${i}\nitem1.X-ABLabel:Ponsel\nitem2.ADR:;;Indonesia;;;;\nitem2.X-ABLabel:Region\nEND:VCARD` //vcard: `BEGIN:VCARD\nVERSION:3.0\nN:${await ndaa.getName(i + '@s.whatsapp.net')}\nFN:${await ndaa.getName(i + '@s.whatsapp.net')}\nitem1.TEL;waid=${i}:${i}\nitem1.X-ABLabel:Ponsel\nitem2.EMAIL;type=INTERNET:whatsapp@gmail.com\nitem2.X-ABLabel:Email\nitem3.URL:https://instagram.com/ndaa_dev\nitem3.X-ABLabel:Instagram\nitem4.ADR:;;Indonesia;;;;\nitem4.X-ABLabel:Region\nEND:VCARD`
 			})
 		}
-		naze.sendMessage(jid, { contacts: { displayName: `${list.length} Kontak`, contacts: list }, ...opts }, { quoted })
+		ndaa.sendMessage(jid, { contacts: { displayName: `${list.length} Kontak`, contacts: list }, ...opts }, { quoted })
 	}
 	
-	naze.profilePictureUrl = async (jid, type = 'image', timeoutMs) => {
-		const result = await naze.query({
+	ndaa.profilePictureUrl = async (jid, type = 'image', timeoutMs) => {
+		const result = await ndaa.query({
 			tag: 'iq',
 			attrs: {
 				target: jidNormalizedUser(jid),
@@ -317,8 +319,8 @@ async function Solving(naze, store) {
 		return child?.attrs?.url;
 	}
 	
-	naze.setStatus = (status) => {
-		naze.query({
+	ndaa.setStatus = (status) => {
+		ndaa.query({
 			tag: 'iq',
 			attrs: {
 				to: '@s.whatsapp.net',
@@ -334,22 +336,22 @@ async function Solving(naze, store) {
 		return status
 	}
 	
-	naze.sendPoll = (jid, name = '', values = [], selectableCount = 1) => {
-		return naze.sendMessage(jid, { poll: { name, values, selectableCount }})
+	ndaa.sendPoll = (jid, name = '', values = [], selectableCount = 1) => {
+		return ndaa.sendMessage(jid, { poll: { name, values, selectableCount }})
 	}
 	
-	naze.sendFileUrl = async (jid, url, caption, quoted, options = {}) => {
+	ndaa.sendFileUrl = async (jid, url, caption, quoted, options = {}) => {
 		async function getFileUrl(res, mime) {
 			if (mime && mime.includes('gif')) {
-				return naze.sendMessage(jid, { video: res.data, caption: caption, gifPlayback: true, ...options }, { quoted });
+				return ndaa.sendMessage(jid, { video: res.data, caption: caption, gifPlayback: true, ...options }, { quoted });
 			} else if (mime && mime === 'application/pdf') {
-				return naze.sendMessage(jid, { document: res.data, mimetype: 'application/pdf', caption: caption, ...options }, { quoted });
+				return ndaa.sendMessage(jid, { document: res.data, mimetype: 'application/pdf', caption: caption, ...options }, { quoted });
 			} else if (mime && mime.includes('image')) {
-				return naze.sendMessage(jid, { image: res.data, caption: caption, ...options }, { quoted });
+				return ndaa.sendMessage(jid, { image: res.data, caption: caption, ...options }, { quoted });
 			} else if (mime && mime.includes('video')) {
-				return naze.sendMessage(jid, { video: res.data, caption: caption, mimetype: 'video/mp4', ...options }, { quoted });
+				return ndaa.sendMessage(jid, { video: res.data, caption: caption, mimetype: 'video/mp4', ...options }, { quoted });
 			} else if (mime && mime.includes('audio')) {
-				return naze.sendMessage(jid, { audio: res.data, mimetype: 'audio/mpeg', ...options }, { quoted });
+				return ndaa.sendMessage(jid, { audio: res.data, mimetype: 'audio/mpeg', ...options }, { quoted });
 			}
 		}
 		
@@ -363,8 +365,8 @@ async function Solving(naze, store) {
 		return hasil
 	}
 	
-	naze.sendFakeLink = async (jid, text, title, body, thumbnail, myweb, options = {}) => {
-		await naze.sendMessage(jid, {
+	ndaa.sendFakeLink = async (jid, text, title, body, thumbnail, myweb, options = {}) => {
+		await ndaa.sendMessage(jid, {
 			text: text,
 			contextInfo: {
 				externalAdReply: {
@@ -379,22 +381,22 @@ async function Solving(naze, store) {
 		}, { ...options })
 	}
 	
-	naze.sendFromOwner = async (jid, text, quoted, options = {}) => {
+	ndaa.sendFromOwner = async (jid, text, quoted, options = {}) => {
 		for (const a of jid) {
-			await naze.sendMessage(a.replace(/[^0-9]/g, '') + '@s.whatsapp.net', { text, ...options }, { quoted });
+			await ndaa.sendMessage(a.replace(/[^0-9]/g, '') + '@s.whatsapp.net', { text, ...options }, { quoted });
 		}
 	}
 	
-	naze.sendTextMentions = async (jid, text, quoted, options = {}) => naze.sendMessage(jid, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
+	ndaa.sendTextMentions = async (jid, text, quoted, options = {}) => ndaa.sendMessage(jid, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
 	
-	naze.sendAsSticker = async (jid, path, quoted, options = {}) => {
+	ndaa.sendAsSticker = async (jid, path, quoted, options = {}) => {
 		const buff = Buffer.isBuffer(path) ? path : /^data:.*?\/.*?;base64,/i.test(path) ? Buffer.from(path.split`,`[1], 'base64') : /^https?:\/\//.test(path) ? await (await getBuffer(path)) : fs.existsSync(path) ? fs.readFileSync(path) : Buffer.alloc(0);
 		const result = await writeExif(buff, options);
-		await naze.sendMessage(jid, { sticker: { url: result }, ...options }, { quoted });
+		await ndaa.sendMessage(jid, { sticker: { url: result }, ...options }, { quoted });
 		return buff;
 	}
 	
-	naze.downloadAndSaveMediaMessage = async (message, filename, attachExtension = true) => {
+	ndaa.downloadAndSaveMediaMessage = async (message, filename, attachExtension = true) => {
 		const quoted = message.msg || message;
 		const mime = quoted.mimetype || '';
 		const messageType = (message.mtype || mime.split('/')[0]).replace(/Message/gi, '');
@@ -409,7 +411,7 @@ async function Solving(naze, store) {
 		return trueFileName;
 	}
 	
-	naze.getFile = async (PATH, save) => {
+	ndaa.getFile = async (PATH, save) => {
 		let res
 		let data = Buffer.isBuffer(PATH) ? PATH : /^data:.*?\/.*?;base64,/i.test(PATH) ? Buffer.from(PATH.split`,`[1], 'base64') : /^https?:\/\//.test(PATH) ? await (res = await getBuffer(PATH)) : fs.existsSync(PATH) ? (filename = PATH, fs.readFileSync(PATH)) : typeof PATH === 'string' ? PATH : Buffer.alloc(0)
 		let type = await FileType.fromBuffer(data) || {
@@ -427,8 +429,8 @@ async function Solving(naze, store) {
 		}
 	}
 	
-	naze.sendMedia = async (jid, path, fileName = '', caption = '', quoted = '', options = {}) => {
-		const { mime, data, filename } = await naze.getFile(path, true);
+	ndaa.sendMedia = async (jid, path, fileName = '', caption = '', quoted = '', options = {}) => {
+		const { mime, data, filename } = await ndaa.getFile(path, true);
 		const isWebpSticker = options.asSticker || /webp/.test(mime);
 		let type = 'document', mimetype = mime, pathFile = filename;
 		if (isWebpSticker) {
@@ -445,11 +447,11 @@ async function Solving(naze, store) {
 		} else if (/image|video|audio/.test(mime)) {
 			type = mime.split('/')[0];
 		}
-		await naze.sendMessage(jid, { [type]: { url: pathFile }, caption, mimetype, fileName, ...options }, { quoted, ...options });
+		await ndaa.sendMessage(jid, { [type]: { url: pathFile }, caption, mimetype, fileName, ...options }, { quoted, ...options });
 		return fs.promises.unlink(pathFile);
 	}
 	
-	naze.sendButtonMsg = async (jid, body = '', footer = '', title = '', media, buttons = [], quoted, options = {}) => {
+	ndaa.sendButtonMsg = async (jid, body = '', footer = '', title = '', media, buttons = [], quoted, options = {}) => {
 		const { type, data, url, ...rest } = media || {}
 		const msg = await generateWAMessageFromContent(jid, {
 			viewOnceMessage: {
@@ -467,7 +469,7 @@ async function Solving(naze, store) {
 							...(media ? await generateWAMessageContent({
 								[type]: url ? { url } : data, ...rest
 							}, {
-								upload: naze.waUploadToServer
+								upload: ndaa.waUploadToServer
 							}) : {})
 						}),
 						nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
@@ -500,13 +502,13 @@ async function Solving(naze, store) {
 				}
 			}
 		}, {});
-		const hasil = await naze.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id });
+		const hasil = await ndaa.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id });
 		return hasil
 	}
 	
-	naze.sendCarouselMsg = async (jid, body = '', footer = '', cards = [], options = {}) => {
+	ndaa.sendCarouselMsg = async (jid, body = '', footer = '', cards = [], options = {}) => {
 		async function getImageMsg(url) {
-			const { imageMessage } = await generateWAMessageContent({ image: { url } }, { upload: naze.waUploadToServer });
+			const { imageMessage } = await generateWAMessageContent({ image: { url } }, { upload: ndaa.waUploadToServer });
 			return imageMessage;
 		}
 		const cardPromises = cards.map(async (a) => {
@@ -546,21 +548,21 @@ async function Solving(naze, store) {
 				}
 			}
 		}, {});
-		const hasil = await naze.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id });
+		const hasil = await ndaa.relayMessage(msg.key.remoteJid, msg.message, { messageId: msg.key.id });
 		return hasil
 	}
 
-	return naze
+	return ndaa
 }
 
 /*
-	* Create By Naze
-	* Follow https://github.com/nazedev
+	* Create By ndaa
+	* Follow https://github.com/ndaadev
 	* Whatsapp : wa.me/6282113821188
 */
 
-async function Serialize(naze, m, store) {
-	const botNumber = naze.decodeJid(naze.user.id)
+async function Serialize(ndaa, m, store) {
+	const botNumber = ndaa.decodeJid(ndaa.user.id)
 	if (!m) return m
 	if (m.key) {
 		m.id = m.key.id
@@ -568,9 +570,9 @@ async function Serialize(naze, m, store) {
 		m.fromMe = m.key.fromMe
 		m.isBot = (m.id.startsWith('BAE5') || m.id.startsWith('HSK') || m.id.length === 22)
 		m.isGroup = m.chat.endsWith('@g.us')
-		m.sender = naze.decodeJid(m.fromMe && naze.user.id || m.participant || m.key.participant || m.chat || '')
+		m.sender = ndaa.decodeJid(m.fromMe && ndaa.user.id || m.participant || m.key.participant || m.chat || '')
 		if (m.isGroup) {
-			m.metadata = store.groupMetadata[m.chat] || await naze.groupMetadata(m.chat)
+			m.metadata = store.groupMetadata[m.chat] || await ndaa.groupMetadata(m.chat)
 			m.admins = (m.metadata.participants.reduce((a, b) => (b.admin ? a.push({ id: b.id, admin: b.admin }) : [...a]) && a, []))
 			m.isAdmin = m.admins.some((b) => b.id === m.sender)
 			m.participant = m.key.participant
@@ -607,21 +609,21 @@ async function Serialize(naze, m, store) {
 			m.quoted.device = getDevice(m.quoted.id)
 			m.quoted.chat = m.msg.contextInfo.remoteJid || m.chat
 			m.quoted.isBot = m.quoted.id ? (m.quoted.id.startsWith('BAE5') || m.quoted.id.startsWith('HSK') || m.quoted.id.length === 22) : false
-			m.quoted.sender = naze.decodeJid(m.msg.contextInfo.participant)
-			m.quoted.fromMe = m.quoted.sender === naze.decodeJid(naze.user.id)
+			m.quoted.sender = ndaa.decodeJid(m.msg.contextInfo.participant)
+			m.quoted.fromMe = m.quoted.sender === ndaa.decodeJid(ndaa.user.id)
 			m.quoted.text = m.quoted.caption || m.quoted.conversation || m.quoted.contentText || m.quoted.selectedDisplayText || m.quoted.title || ''
 			m.quoted.msg = extractMessageContent(m.quoted.message[m.quoted.type]) || m.quoted.message[m.quoted.type]
 			m.quoted.mentionedJid = m.msg.contextInfo ? m.msg.contextInfo.mentionedJid : []
 			m.quoted.body = m.quoted.msg?.text || m.quoted.msg?.caption || m.quoted?.message?.conversation || m.quoted.msg?.selectedButtonId || m.quoted.msg?.singleSelectReply?.selectedRowId || m.quoted.msg?.selectedId || m.quoted.msg?.contentText || m.quoted.msg?.selectedDisplayText || m.quoted.msg?.title || m.quoted?.msg?.name || ''
 			m.getQuotedObj = async () => {
 				if (!m.quoted.id) return false
-				let q = await store.loadMessage(m.chat, m.quoted.id, naze)
-				return await Serialize(naze, q, store)
+				let q = await store.loadMessage(m.chat, m.quoted.id, ndaa)
+				return await Serialize(ndaa, q, store)
 			}
 			m.quoted.key = {
 				remoteJid: m.msg?.contextInfo?.remoteJid || m.chat,
 				participant: m.quoted.sender,
-				fromMe: areJidsSameUser(naze.decodeJid(m.msg?.contextInfo?.participant), naze.decodeJid(naze?.user?.id)),
+				fromMe: areJidsSameUser(ndaa.decodeJid(m.msg?.contextInfo?.participant), ndaa.decodeJid(ndaa?.user?.id)),
 				id: m.msg?.contextInfo?.stanzaId
 			}
 			m.quoted.isGroup = m.quoted.chat.endsWith('@g.us')
@@ -660,7 +662,7 @@ async function Serialize(naze, m, store) {
 				return buffer
 			}
 			m.quoted.delete = () => {
-				naze.sendMessage(m.quoted.chat, {
+				ndaa.sendMessage(m.quoted.chat, {
 					delete: {
 						remoteJid: m.quoted.chat,
 						fromMe: m.isBotAdmins ? false : true,
@@ -684,7 +686,7 @@ async function Serialize(naze, m, store) {
 		return buffer
 	}
 	
-	m.copy = () => Serialize(naze, proto.WebMessageInfo.fromObject(proto.WebMessageInfo.toObject(m)))
+	m.copy = () => Serialize(ndaa, proto.WebMessageInfo.fromObject(proto.WebMessageInfo.toObject(m)))
 	
 	m.reply = async (text, options = {}) => {
 		const chatId = options?.chat ? options.chat : m.chat
@@ -695,15 +697,15 @@ async function Serialize(naze, m, store) {
 				const data = await axios.get(text, { responseType: 'arraybuffer' });
 				const mime = data.headers['content-type'] || (await FileType.fromBuffer(data.data)).mime
 				if (/gif|image|video|audio|pdf/i.test(mime)) {
-					return naze.sendFileUrl(chatId, text, caption, quoted, options)
+					return ndaa.sendFileUrl(chatId, text, caption, quoted, options)
 				} else {
-					return naze.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
+					return ndaa.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
 				}
 			} else {
-				return naze.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
+				return ndaa.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
 			}
 		} catch (e) {
-			return naze.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
+			return ndaa.sendMessage(chatId, { text: text, mentions: [...text.matchAll(/@(\d{0,16})/g)].map(v => v[1] + '@s.whatsapp.net'), ...options }, { quoted })
 		}
 	}
 
