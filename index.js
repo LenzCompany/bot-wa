@@ -5,17 +5,6 @@ let path = require('path')
 let fs = require('fs')
 let package = require('./package.json')
 const CFonts  = require('cfonts')
-const express = require('express')
-let app = express()
-
-app.get("/", (req, res) => {
-  res.send("STATUS : ONLINE!!")
-})
-
-const port = 3000
-app.listen(port, () => {
-  console.log("KONEK")
-})
 CFonts.say('Lightweight\nWhatsApp Bot', {
   font: 'chrome',
   align: 'center',
